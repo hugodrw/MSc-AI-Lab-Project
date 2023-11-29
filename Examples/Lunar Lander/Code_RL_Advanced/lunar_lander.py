@@ -5,7 +5,7 @@
 
 from environment import BaseEnvironment
 import numpy as np
-import gym
+import gymnasium as gym
 
 class LunarLanderEnvironment(BaseEnvironment):
     def env_init(self, env_info={}):
