@@ -7,8 +7,8 @@ def label (text , pos , screen):
     label = font.render(text, True, (255, 255, 255))
     screen.blit(label , pos)
 
-def line (p1 , p2 , screen , color):
-    pygame.draw.line(screen, color, p1, p2, 1)
+def line (p1 , p2 , screen , color , w=1):
+    pygame.draw.line(screen, color, p1, p2, w)
 
 
 def polar_to_cartesian(angle, radius):

@@ -11,19 +11,36 @@ import os
 import shutil
 from plot_script import plot_result
 
+import pickle
+
+#import wandb
+#from wandb.keras import WandbCallback
+
 # Part 1
 class ActionValueNetwork:
     def __init__(self , network_config):
         self.state_dim = network_config.get("state_dim")
         self.num_hudden_units = network_config.get("num_hidden_units")
         self.num_actions = network_config.get("num_actions")
+        self.in_weights = network_config.get("weights_file")
         self.rand_generator = np.random.RandomState(network_config.get("seed"))
         self.layer_sizes = [self.state_dim , self.num_hudden_units , self.num_actions]
-        self.weights = [dict() for i in range(0 , len(self.layer_sizes) - 1)]
-        for i in range(0 , len(self.layer_sizes) - 1):
-            #print("LAYER" , self.layer_sizes[i] , self.layer_sizes[i+1])
-            self.weights[i]['W'] = self.init_saxes(self.layer_sizes[i] , self.layer_sizes[i+1])
-            self.weights[i]["b"] = np.zeros((1 , self.layer_sizes[i+1]))
+        self.weights = None
+
+        if self.in_weights == None:
+            print("No input weights, start from scratch")
+            self.weights = [dict() for i in range(0 , len(self.layer_sizes) - 1)]
+            for i in range(0 , len(self.layer_sizes) - 1):
+                #print("LAYER" , self.layer_sizes[i] , self.layer_sizes[i+1])
+                self.weights[i]['W'] = self.init_saxes(self.layer_sizes[i] , self.layer_sizes[i+1])
+                self.weights[i]["b"] = np.zeros((1 , self.layer_sizes[i+1]))
+            print(self.weights)
+        else:
+            print("self.weights set to input weights")
+            self.weights = self.in_weights
+            print(self.weights)
+
+        
 
     def get_action_values(self , s):
         W0 , b0 = self.weights[0]["W"] , self.weights[0]["b"]
@@ -241,6 +258,7 @@ class Agent(BaseAgent):
 # Part 6
 def run_experiment(environment , agent , environment_parameters , agent_parameters , experiment_parameters):
     
+
     rl_glue = RLGlue(environment , agent)
     agnet_sum_reward = np.zeros((experiment_parameters["num_runs"],
                                  experiment_parameters["num_episodes"]))
@@ -259,6 +277,10 @@ def run_experiment(environment , agent , environment_parameters , agent_paramete
             rl_glue.rl_episode(experiment_parameters["timeout"])
             episode_reward = rl_glue.rl_agent_message("get_sum_reward")
             agnet_sum_reward[run - 1 , episode - 1] = episode_reward
+
+    save_path = input("Save path name : ")
+    save_weights(path= save_path, data=rl_glue.agent.network.weights)
+
     save_name = "{}".format(rl_glue.agent.name)
     if not os.path.exists("results"):
         os.makedirs("results")
@@ -266,17 +288,67 @@ def run_experiment(environment , agent , environment_parameters , agent_paramete
     shutil.make_archive("results" , "zip" , "results")
     
 
+"""
+def wandb_connect():
+    wandb_api_key_label = "wandb_api_key"
+    wandb_api_key = "" # here use your API key from WandB interface
+
+    wandb_conx = wandb.login(key = wandb_api_key)
+    print(f"Connected to Wandb online interface : {wandb_conx}")
+"""
+
+"""
+import pickle
+
+# Sample dictionary
+my_dict = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+
+# Save dictionary to a file
+with open('my_dict.pickle', 'wb') as file:
+    pickle.dump(my_dict, file)
+
+# Load dictionary from the file
+with open('my_dict.pickle', 'rb') as file:
+    loaded_dict = pickle.load(file)
+
+# Print the loaded dictionary
+print(loaded_dict)
+"""
+
+
+def save_weights(data , path):
+    with open(path+".pickle", 'wb') as file:
+        pickle.dump(data, file)
+    print("Saved data at " , path)
+
+    
+def load_weights(path):
+    with open(path+".pickle", 'rb') as file:
+        loaded_data = pickle.load(file)
+        print("Loaded data at " , path)
+        return loaded_data
+
+
+
+
 
 if __name__ == "__main__":
+    prompt1 = input("Start from scratch ? [y/n] :")
+
+    weight_file = None
+    if prompt1 == "n":
+        weight_file = load_weights(input("input file path: "))
     
+
     experiment_parameters = {"num_runs":1,
-                             "num_episodes":100,
+                             "num_episodes":3,
                              "timeout":1000}
     environment_parameters = {}
     current_env = SatelliteEnvironment
     agent_parameters = {"network_config":{"state_dim":3,
                                           "num_hidden_units":256,
-                                          "num_actions":3},
+                                          "num_actions":3,
+                                          "weights_file":weight_file},
                         "optimizer_config":{"step_size":1e-3,
                                             "beta_m":0.9,
                                             "beta_v":0.999,
@@ -286,8 +358,17 @@ if __name__ == "__main__":
                         "num_replay_updates_per_step":4,
                         "gamma":0.99,
                         "tau":0.2}
+    
+    
+
     current_agent = Agent
     run_experiment(current_env , current_agent , environment_parameters , agent_parameters , experiment_parameters)
+
+
+    #print("final weights" , current_agent.)
+
     plot_result(["expected_sarsa_agent"])
+
+
     
     

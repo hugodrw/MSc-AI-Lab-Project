@@ -15,11 +15,15 @@ ep_count = "None Found"
 VISUALISE = True # add a visualise toggle bool
 REACHED_DIST = 10
 
+ACTION_1_is_on = False
+ACTION_2_is_on = False
+
 
 
 class SatelliteEnvironment(BaseEnvironment):
     def __init__(self):
         self.name = "Satellite Simulator"
+        
         
 
     def env_init(self , env_info={}):
@@ -74,12 +78,19 @@ class SatelliteEnvironment(BaseEnvironment):
     def visual_update(self):
         if VISUALISE == False:
             return
+        
+        global ACTION_1_is_on
+        global ACTION_2_is_on
 
         screen = self.screen
         earth = self.earth
         satellite_1 = self.satellite_1
         satellite_2 = self.satellite_2
         screen.fill((3, 9, 41))
+
+        bg = pygame.image.load("img2.jpg")
+        bg = pygame.transform.scale(bg, (1000, 800))
+        screen.blit(bg, (0, 0))
 
         # orbits
         pygame.draw.circle(screen, (135, 135, 135), earth.position, EARTH_RADIUS + 60, 1)
@@ -96,6 +107,16 @@ class SatelliteEnvironment(BaseEnvironment):
                                            SATELLITE_RADIUS)
         line(satellite_1.position , satellite_1.position + satellite_1.normalise_vector(satellite_1.velocity)*60 , screen , WHITE)
         
+        # Show boost direction
+        if ACTION_1_is_on:
+            #print("action 1")
+            line(satellite_1.position , satellite_1.position - satellite_1.get_tangent_vec(self.earth)*80 , screen , (196, 116, 10) , w=2)
+        if ACTION_2_is_on:
+            #print("action 2")
+            line(satellite_1.position , satellite_1.position + satellite_1.get_tangent_vec(self.earth)*80 , screen , (196, 116, 10) , w=2)
+            
+
+
         pygame.draw.circle(screen, WHITE, (int(satellite_2.position[0]),
                                            int(satellite_2.position[1])),
                                            SATELLITE_RADIUS)
@@ -128,25 +149,33 @@ class SatelliteEnvironment(BaseEnvironment):
         # sat_1 fuel left
         fuel = self.sat_1_fuel
 
-        
+        #altitude_diff = sat_1_alt - np.linalg.norm(self.satellite_2.position - self.earth.position) - EARTH_RADIUS
+        #radial_diff = self.satellite_1.get_angle_in_orbit(self.earth) - self.satellite_2.get_angle_in_orbit(self.earth)
         #print("OBSERVING :" , (sat_1_alt , dist , fuel))
         return (sat_1_alt , dist , fuel)
 
 
     def perform_action(self , a):
+        global ACTION_1_is_on
+        global ACTION_2_is_on
         # Observe current state
         current_state = self.env_observe_state()
 
         # Perform action
         if a == 1:
             self.sat_1_fuel -= 1
-            self.satellite_1.change_tangent_velocity(self.earth , 0.01)
+            self.satellite_1.change_tangent_velocity(self.earth , 0.001)
+            ACTION_1_is_on = True
         elif a == 2:
             self.sat_1_fuel -= 1
-            self.satellite_1.change_tangent_velocity(self.earth , -0.01)
+            self.satellite_1.change_tangent_velocity(self.earth , -0.001)
+            ACTION_2_is_on = True
         elif a == 4:
             # 4: set velocity to stay in orbit
             self.satellite_1.set_circular_orbit_velocity(self.earth , self.satellite_1.calculate_distance(self.satellite_1.position , self.earth.position))
+        else:
+            ACTION_1_is_on = False
+            ACTION_2_is_on = False
 
         # Observe new state
         next_state = self.env_observe_state()
